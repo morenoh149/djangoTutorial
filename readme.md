@@ -1,3 +1,9 @@
 # Django Tutorial
 
-a app to learn Django with
+an app to learn Django with
+
+## run
+`python manage.py runserver`
+
+## test
+`python manage.py test`

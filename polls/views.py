@@ -3,6 +3,7 @@ from django.http import HttpResponseRedirect, HttpResponse
 from django.http import Http404
 from django.core.urlresolvers import reverse
 from django.template import loader
+from django.utils import timezone
 from django.views import generic
 
 from .models import Choice, Question
@@ -12,12 +13,23 @@ class IndexView(generic.ListView):
     context_object_name = 'latest_question_list'
 
     def get_queryset(self):
-        """Return the last five published questions."""
-        return Question.objects.order_by('-pub_date')[:5]
+        """
+        Return the last five published questions (not including those set to be
+        published in the future).
+        """
+        return Question.objects.filter(
+            pub_date__lte=timezone.now()
+        ).order_by('-pub_date')[:5]
 
 class DetailView(generic.DetailView):
     model = Question
     template_name = 'polls/detail.html'
+
+    def get_queryset(self):
+        """
+        Excludes any questions that aren't published yet.
+        """
+        return Question.objects.filter(pub_date__lte=timezone.now())
 
 class ResultsView(generic.DetailView):
     model = Question
@@ -29,9 +41,14 @@ def vote(request, question_id):
         selected_choice = question.choice_set.get(pk=request.POST['choice'])
     except (KeyError, Choice.DoesNotExist):
         # Redisplay the question voting form.
+        error_msg = ""
+        if question.choice_set.count() == 0:
+            error_msg = "There are no choices to choose from!"
+        else:
+            error_msg = "You didn't select a choice."
         return render(request, 'polls/detail.html', {
             'question': question,
-            'error_message': "You didn't select a choice.",
+            'error_message': error_msg,
         })
     else:
         selected_choice.votes += 1
